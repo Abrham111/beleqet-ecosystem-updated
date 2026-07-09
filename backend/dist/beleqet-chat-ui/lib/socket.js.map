@@ -1,0 +1,1 @@
+{"version":3,"file":"socket.js","sourceRoot":"","sources":["../../../beleqet-chat-ui/lib/socket.ts"],"names":[],"mappings":";;;AAAA,uDAA8C;AAE9C,MAAM,OAAO,GACX,OAAO,CAAC,GAAG,CAAC,mBAAmB;IAC/B,0CAA0C,CAAC;AAEhC,QAAA,MAAM,GAAW,IAAA,qBAAE,EAAC,GAAG,OAAO,OAAO,EAAE;IAClD,UAAU,EAAE,CAAC,WAAW,CAAC;IAEzB,WAAW,EAAE,KAAK;IAElB,IAAI,EAAE;QACJ,KAAK,EAAE,EAAE;KACV;CACF,CAAC,CAAC"}
