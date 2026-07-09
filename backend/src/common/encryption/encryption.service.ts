@@ -7,9 +7,10 @@ export class EncryptionService {
   private readonly ALGORITHM = 'aes-256-gcm';
   private readonly IV_LENGTH = 12;
   private readonly KEY_LENGTH = 32;
-  private readonly key: Buffer;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {}
+
+  private getEncryptionKey(): Buffer {
     const key = this.configService.get<string>('ENCRYPTION_KEY');
 
     if (!key) {
@@ -19,13 +20,15 @@ export class EncryptionService {
     }
 
     // ENCRYPTION_KEY should be a 64-character hex string (32 bytes)
-    this.key = Buffer.from(key, 'hex');
+    const encryptionKey = Buffer.from(key, 'hex');
 
-    if (this.key.length !== this.KEY_LENGTH) {
+    if (encryptionKey.length !== this.KEY_LENGTH) {
       throw new InternalServerErrorException(
         'ENCRYPTION_KEY must be exactly 32 bytes.',
       );
     }
+
+    return encryptionKey;
   }
 
   /**
@@ -40,18 +43,19 @@ export class EncryptionService {
 
   encrypt(plaintext: string): string {
     try {
-
       if (!plaintext || !plaintext.trim()) {
         throw new InternalServerErrorException(
           'Plaintext cannot be empty.',
         );
       }
 
+      const key = this.getEncryptionKey();
+
       const iv = crypto.randomBytes(this.IV_LENGTH);
 
       const cipher = crypto.createCipheriv(
         this.ALGORITHM,
-        this.key,
+        key,
         iv,
       );
 
@@ -84,6 +88,7 @@ export class EncryptionService {
    */
   decrypt(payload: string): string {
     try {
+      const key = this.getEncryptionKey();
       const parts = payload.split(':');
 
       if (parts.length !== 3) {
@@ -96,7 +101,7 @@ export class EncryptionService {
 
       const decipher = crypto.createDecipheriv(
         this.ALGORITHM,
-        this.key,
+        key,
         Buffer.from(ivHex, 'hex'),
       );
 
