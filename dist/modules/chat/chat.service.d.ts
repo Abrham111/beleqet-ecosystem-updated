@@ -1,8 +1,10 @@
 import { PrismaService } from '../../prisma/prisma.service';
+import { EncryptionService } from '../../common/encryption/encryption.service';
 export declare class ChatService {
     private readonly prisma;
+    private readonly encryptionService;
     private readonly logger;
-    constructor(prisma: PrismaService);
+    constructor(prisma: PrismaService, encryptionService: EncryptionService);
     createOrGetRoom(userId1: string, userId2: string, contractId?: string): Promise<{
         messages: {
             content: string;
@@ -44,7 +46,8 @@ export declare class ChatService {
         senderId: string;
         isSystem: boolean;
     }>;
-    getRoomMessages(roomId: string, userId: string, take?: number): Promise<({
+    getRoomMessages(roomId: string, userId: string, take?: number): Promise<{
+        content: string;
         sender: {
             firstName: string;
             lastName: string;
@@ -52,13 +55,11 @@ export declare class ChatService {
             id: string;
             avatarUrl: string | null;
         };
-    } & {
-        content: string;
         id: string;
         createdAt: Date;
         metadata: import("@prisma/client/runtime/library").JsonValue | null;
         roomId: string;
         senderId: string;
         isSystem: boolean;
-    })[]>;
+    }[]>;
 }

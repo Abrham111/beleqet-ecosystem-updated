@@ -11,11 +11,13 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var ChatService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChatService = void 0;
-const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../prisma/prisma.service");
+const encryption_service_1 = require("../../common/encryption/encryption.service");
+const common_1 = require("@nestjs/common");
 let ChatService = ChatService_1 = class ChatService {
-    constructor(prisma) {
+    constructor(prisma, encryptionService) {
         this.prisma = prisma;
+        this.encryptionService = encryptionService;
         this.logger = new common_1.Logger(ChatService_1.name);
     }
     async createOrGetRoom(userId1, userId2, contractId) {
@@ -45,11 +47,15 @@ let ChatService = ChatService_1 = class ChatService {
         });
         if (!participant)
             throw new common_1.NotFoundException('User is not a participant of this chat room');
+        if (!content || !content.trim()) {
+            throw new common_1.BadRequestException('Message content cannot be empty.');
+        }
+        const encryptedContent = this.encryptionService.encrypt(content);
         return this.prisma.message.create({
             data: {
                 roomId,
                 senderId,
-                content,
+                content: encryptedContent,
                 metadata
             },
             include: {
@@ -61,14 +67,34 @@ let ChatService = ChatService_1 = class ChatService {
         const participant = await this.prisma.chatParticipant.findUnique({
             where: { roomId_userId: { roomId, userId } }
         });
-        if (!participant)
+        if (!participant) {
             throw new common_1.NotFoundException('Unauthorized');
-        return this.prisma.message.findMany({
+        }
+        const messages = await this.prisma.message.findMany({
             where: { roomId },
             orderBy: { createdAt: 'asc' },
             take,
             include: {
-                sender: { select: { id: true, firstName: true, lastName: true, avatarUrl: true, role: true } }
+                sender: {
+                    select: {
+                        id: true, firstName: true, lastName: true, avatarUrl: true, role: true,
+                    },
+                },
+            },
+        });
+        return messages.map((message) => {
+            try {
+                return {
+                    ...message,
+                    content: this.encryptionService.decrypt(message.content),
+                };
+            }
+            catch (error) {
+                this.logger.error(`Failed to decrypt message ${message.id}`);
+                return {
+                    ...message,
+                    content: '[Unable to decrypt message]',
+                };
             }
         });
     }
@@ -76,6 +102,7 @@ let ChatService = ChatService_1 = class ChatService {
 exports.ChatService = ChatService;
 exports.ChatService = ChatService = ChatService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        encryption_service_1.EncryptionService])
 ], ChatService);
 //# sourceMappingURL=chat.service.js.map

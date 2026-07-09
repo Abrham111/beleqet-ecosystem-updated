@@ -13,6 +13,7 @@ const config_1 = require("@nestjs/config");
 const chat_service_1 = require("./chat.service");
 const chat_gateway_1 = require("./chat.gateway");
 const prisma_module_1 = require("../../prisma/prisma.module");
+const encryption_module_1 = require("../../common/encryption/encryption.module");
 let ChatModule = class ChatModule {
 };
 exports.ChatModule = ChatModule;
@@ -20,6 +21,7 @@ exports.ChatModule = ChatModule = __decorate([
     (0, common_1.Module)({
         imports: [
             prisma_module_1.PrismaModule,
+            encryption_module_1.EncryptionModule,
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
