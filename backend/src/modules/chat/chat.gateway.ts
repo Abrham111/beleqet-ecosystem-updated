@@ -1,8 +1,8 @@
-import { 
-  WebSocketGateway, 
-  SubscribeMessage, 
-  MessageBody, 
-  ConnectedSocket, 
+import {
+  WebSocketGateway,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect
@@ -19,27 +19,46 @@ import { Logger } from '@nestjs/common';
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
-  
+
   private readonly logger = new Logger(ChatGateway.name);
 
   constructor(
     private readonly chatService: ChatService,
     private readonly jwtService: JwtService
-  ) {}
+  ) { }
 
   async handleConnection(client: Socket) {
     try {
-      // Expect token in handshake auth: { token: "Bearer eyJ..." }
-      const tokenString = client.handshake.auth?.token || client.handshake.headers?.authorization;
-      if (!tokenString) throw new Error('No token provided');
-      
-      const token = tokenString.replace('Bearer ', '').trim();
+      const tokenString =
+        client.handshake.auth?.token ||
+        client.handshake.headers?.authorization;
+
+      // Development mode: allow connections without JWT
+      if (!tokenString) {
+        client.data.user = {
+          userId: "abrhamb",
+        };
+
+        this.logger.log(
+          `[ChatGateway] Development connection: ${client.id}`
+        );
+
+        return;
+      }
+
+      const token = tokenString.replace("Bearer ", "").trim();
       const payload = this.jwtService.verify(token);
-      
+
       client.data.user = payload;
-      this.logger.log(`[ChatGateway] Client connected: ${client.id} (User: ${payload.userId})`);
+
+      this.logger.log(
+        `[ChatGateway] Client connected: ${client.id} (User: ${payload.userId})`
+      );
     } catch (err) {
-      this.logger.warn(`[ChatGateway] Unauthorized connection attempt: ${client.id}`);
+      this.logger.warn(
+        `[ChatGateway] Unauthorized connection attempt: ${client.id}`
+      );
+
       client.disconnect();
     }
   }
@@ -59,7 +78,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       client.join(data.roomId);
       this.logger.log(`User ${userId} joined room ${data.roomId}`);
-      
+
       // Fetch history and send only to the connecting user
       const history = await this.chatService.getRoomMessages(data.roomId, userId);
       client.emit('room_history', history);
@@ -75,15 +94,37 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket
   ) {
     const userId = client.data.user?.userId;
-    if (!userId || !data.roomId || !data.content) return;
+
+    console.log("MESSAGE RECEIVED:", data);
+
+    if (!userId || !data.roomId || !data.content) {
+      console.log("Missing data:", {
+        userId,
+        roomId: data.roomId,
+        content: data.content,
+      });
+      return;
+    }
 
     try {
-      const savedMsg = await this.chatService.saveMessage(data.roomId, userId, data.content);
-      // Broadcast to everyone in the room (including sender)
-      this.server.to(data.roomId).emit('new_message', savedMsg);
+      const savedMsg = await this.chatService.saveMessage(
+        data.roomId,
+        userId,
+        data.content
+      );
+
+      this.server
+        .to(data.roomId)
+        .emit('new_message', savedMsg);
+
     } catch (err) {
-      this.logger.error(`Error sending message: ${(err as Error).message}`);
-      client.emit('error', { message: 'Failed to send message' });
+      this.logger.error(
+        `Error sending message: ${(err as Error).message}`
+      );
+
+      client.emit('error', {
+        message: 'Failed to send message'
+      });
     }
   }
 
